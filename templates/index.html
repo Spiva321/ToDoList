@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Простой и удобный список задач на Flask и SQLite.">
+    <title>Мои задачи — To-Do List</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%236366f1'/%3E%3Cpath d='M28 52l15 15 30-31' fill='none' stroke='white' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+</head>
+<body>
+    <div class="page">
+        <main class="app-card">
+            <header class="app-header">
+                <span class="app-badge">To-Do List</span>
+                <h1>Мои задачи</h1>
+                <p class="app-subtitle">Планируйте свой день продуктивно</p>
+            </header>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-stack" role="status" aria-live="polite">
+                        {% for category, message in messages %}
+                            <div class="flash flash--{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form class="task-form" action="{{ url_for('add_task') }}" method="post" autocomplete="off">
+                <label class="sr-only" for="title">Новая задача</label>
+                <input
+                    class="task-form__input"
+                    id="title"
+                    name="title"
+                    type="text"
+                    maxlength="200"
+                    placeholder="Что нужно сделать?"
+                    required
+                    autofocus
+                >
+                <button class="btn btn--primary" type="submit">Добавить</button>
+            </form>
+
+            <section class="stats" aria-label="Статистика задач">
+                <div class="stat">
+                    <span class="stat__value">{{ total }}</span>
+                    <span class="stat__label">всего</span>
+                </div>
+                <div class="stat">
+                    <span class="stat__value">{{ active }}</span>
+                    <span class="stat__label">активных</span>
+                </div>
+                <div class="stat">
+                    <span class="stat__value stat__value--done">{{ completed }}</span>
+                    <span class="stat__label">выполнено</span>
+                </div>
+            </section>
+
+            {% if tasks %}
+                <ul class="task-list">
+                    {% for task in tasks %}
+                        <li class="task{% if task.completed %} task--completed{% endif %}">
+                            <form class="task__toggle" action="{{ url_for('toggle_task', task_id=task.id) }}" method="post">
+                                <input
+                                    class="task__checkbox"
+                                    type="checkbox"
+                                    id="task-{{ task.id }}"
+                                    {% if task.completed %}checked{% endif %}
+                                    aria-label="{% if task.completed %}Вернуть задачу «{{ task.title }}» в активные{% else %}Отметить задачу «{{ task.title }}» выполненной{% endif %}"
+                                >
+                                <label class="task__checkmark" for="task-{{ task.id }}">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                        <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </label>
+                                <noscript>
+                                    <button class="btn btn--ghost btn--small" type="submit" title="Переключить статус задачи">Переключить</button>
+                                </noscript>
+                            </form>
+
+                            <div class="task__body">
+                                <p class="task__title">{{ task.title }}</p>
+                                <time class="task__date" datetime="{{ task.created_at.isoformat() }}">
+                                    {{ task.created_at.strftime('%d.%m.%Y, %H:%M') }}
+                                </time>
+                            </div>
+
+                            <form class="task__delete" action="{{ url_for('delete_task', task_id=task.id) }}" method="post">
+                                <button
+                                    class="btn btn--danger"
+                                    type="submit"
+                                    title="Удалить задачу"
+                                    aria-label="Удалить задачу «{{ task.title }}»"
+                                >
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                        <path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m3 0l-1 13a1 1 0 01-1 1H8a1 1 0 01-1-1L6 7m4 4v6m4-6v6"
+                                              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                            </form>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state__icon" aria-hidden="true">
+                        <svg viewBox="0 0 64 64" focusable="false">
+                            <rect x="12" y="8" width="40" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="3"/>
+                            <path d="M23 24h18M23 33h18M23 42h11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                            <circle cx="48" cy="48" r="11" fill="#eef2ff" stroke="currentColor" stroke-width="3"/>
+                            <path d="M43.5 48l3 3 5.5-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <p>Пока нет задач. Добавьте свою первую!</p>
+                </div>
+            {% endif %}
+
+            <footer class="app-footer">
+                <span class="app-footer__dot" aria-hidden="true"></span>
+                Все изменения сохраняются автоматически
+            </footer>
+        </main>
+    </div>
+</body>
+</html>
